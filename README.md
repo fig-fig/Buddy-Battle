@@ -234,7 +234,10 @@ This project was built by a team of 2 developers and presented by 2 additional t
 ### 🔗 Original Hackathon Repository
 
 This project was originally created for the **Atlassian X UNIHACK 2025** hackathon.  
-Check out the original repository: [Buddy Battle @ UNIHACK 2025](https://github.com/fgeo0003/buddybattle)
+Check out the original repository: [Buddy-Battle](https://github.com/fgeo0003/buddybattle)
+
+And our submission page: [Buddy Battle @ UNIHACK 2025](https://devpost.com/software/buddy-battle#updates) 
+
 This repo continues development from the original hackathon submission. The project is now being maintained and expanded with new features and improvements.
 
 ---
