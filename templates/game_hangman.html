@@ -1,0 +1,158 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="game-box-hm">
+  <!-- Timer Display -->
+  <div class="timer-container">
+    <!-- your timer SVG or code here -->
+  </div>
+
+  <h2 class="heading">Hangman</h2>
+
+  <!-- Word Display (underscores + revealed letters) -->
+  <div id="word-container">
+    <h3>Guess the word:</h3>
+    <p id="display-word"></p>
+  </div>
+
+  <!-- Hangman Drawing -->
+  <div id="hangman-drawing">
+    <img id="hangman-image" src="/static/hangman1.png" alt="Hangman Stage 1" />
+  </div>
+
+  <!-- Guess Input & Buttons -->
+  <input type="text" id="guess" placeholder="Enter a letter" maxlength="1" />
+  <div class="button-container">
+    <button id="submit_guess">Submit</button>
+    <button id="skip_word">Skip</button>
+  </div>
+
+  <!-- Feedback & Attempts -->
+  <p id="feedback"></p>
+  <p id="attempts-remaining"></p>
+
+  <!-- Guessed Letters Display -->
+  <div id="guessed-letters-container">
+    <h4>Guessed Letters:</h4>
+    <p id="guessed-letters"></p>
+  </div>
+
+  <!-- Leaderboard Section -->
+  <div id="leaderboard">
+    <!-- your leaderboard code here -->
+  </div>
+</div>
+
+<script type="text/javascript">
+  var socketio = io();
+
+  // ====== GAME STATE ======
+  let secretWord = "";            // The actual word from the server
+  let attemptsRemaining = 6;      // Number of wrong guesses allowed
+  let guessedLetters = [];        // Track letters guessed by the player
+
+  // Listen for a new word from the server
+  socketio.on("new_word", (data) => {
+    // data.word is assumed to be the *real* word
+    secretWord = data.word.toLowerCase();
+    attemptsRemaining = 6;
+    guessedLetters = [];
+
+    // Reset everything in the UI
+    updateDisplayWord();
+    updateHangmanArt();
+    updateAttemptsDisplay();
+    updateGuessedLettersDisplay();
+
+    // Clear old feedback
+    document.getElementById("feedback").innerText = "";
+  });
+
+  // Submit guess button
+  document.getElementById("submit_guess").addEventListener("click", () => {
+    const guessInput = document.getElementById("guess");
+    const guess = guessInput.value.toLowerCase();
+    guessInput.value = ""; // Clear input
+
+    // Validate guess: single letter A-Z
+    if (!guess || guess.length !== 1 || !/^[a-z]$/.test(guess)) {
+      document.getElementById("feedback").innerText = "Please enter a single letter (A-Z).";
+      return;
+    }
+
+    // Check if letter already guessed
+    if (guessedLetters.includes(guess)) {
+      document.getElementById("feedback").innerText = `You already guessed "${guess}".`;
+      return;
+    }
+
+    // Record this letter
+    guessedLetters.push(guess);
+    updateGuessedLettersDisplay();
+
+    // Check if correct or wrong
+    if (secretWord.includes(guess)) {
+      document.getElementById("feedback").innerText = `Good guess! "${guess}" is in the word.`;
+      updateDisplayWord();
+
+      // Check if all letters are revealed
+      if (!document.getElementById("display-word").innerText.includes("_")) {
+        document.getElementById("feedback").innerText = "You guessed the entire word! Great job!";
+        // Optionally request a new word from the server:
+        // socketio.emit("start_game");
+      }
+    } else {
+      // Wrong guess
+      attemptsRemaining--;
+      document.getElementById("feedback").innerText = `Sorry, "${guess}" is not in the word.`;
+      updateHangmanArt();
+      updateAttemptsDisplay();
+
+      // Check if game over
+      if (attemptsRemaining <= 0) {
+        document.getElementById("feedback").innerText = `Game over! The word was "${secretWord}".`;
+        // Possibly disable input or automatically start a new round
+      }
+    }
+  });
+
+  // Handle skipping the word
+  document.getElementById("skip_word").addEventListener("click", () => {
+    socketio.emit("skip_word");
+  });
+
+  // ========== HELPER FUNCTIONS ==========
+
+  // Build a string of underscores, revealing any guessed letters
+  function updateDisplayWord() {
+    const display = secretWord
+      .split("")
+      .map(letter => (guessedLetters.includes(letter) ? letter : "_"))
+      .join(" ");
+    document.getElementById("display-word").innerText = display;
+  }
+
+  // Update hangman drawing based on remaining attempts
+  function updateHangmanArt() {
+    const hangmanImage = document.getElementById("hangman-image");
+    const stage = 7 - attemptsRemaining; // 1..7
+    hangmanImage.src = `/static/hangman${stage}.png`;
+  }
+
+  // Update attempts display
+  function updateAttemptsDisplay() {
+    document.getElementById("attempts-remaining").innerText =
+      `Attempts remaining: ${attemptsRemaining}`;
+  }
+
+  // Show guessed letters in the UI
+  function updateGuessedLettersDisplay() {
+    document.getElementById("guessed-letters").innerText = guessedLetters.join(" ");
+  }
+
+  // Start the game when the page loads
+  socketio.emit("start_game");
+</script>
+
+<!-- (Optional) External Timer Script -->
+<script src="{{ url_for('static', filename='js/timer.js') }}"></script>
+{% endblock %}
